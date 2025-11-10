@@ -11,6 +11,8 @@ const app = express();
 
 dotenv.config();
 
+console.log("Allowed origin:", process.env.CLIENT_URL);
+
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
