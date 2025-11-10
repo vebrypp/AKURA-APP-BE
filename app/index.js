@@ -1,4 +1,4 @@
-require("dotenv").config();
+const dotenv = require("dotenv");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -8,6 +8,8 @@ const notFoundHandler = require("./middleware/notFoundHandler");
 const authRoute = require("./module/auth/auth.route");
 
 const app = express();
+
+dotenv.config();
 
 app.use(
   cors({
