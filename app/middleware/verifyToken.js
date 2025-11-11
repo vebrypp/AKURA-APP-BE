@@ -7,11 +7,12 @@ const verifyToken = async (req, res, next) => {
 
     if (!token)
       return res
-        .status(200)
+        .status(401)
         .send({ success: false, message: "Unauthorized! Please login first" });
 
     const decoded = jwt.verify(token, process.env.APP_KEY);
-    const user = await prisma.tD_User.findFirst({
+
+    const user = await prisma.td_User.findFirst({
       where: {
         id: decoded.id,
       },

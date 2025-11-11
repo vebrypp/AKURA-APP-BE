@@ -6,12 +6,11 @@ const cookieParser = require("cookie-parser");
 const errorHandler = require("./middleware/errorHandler");
 const notFoundHandler = require("./middleware/notFoundHandler");
 const authRoute = require("./module/auth/auth.route");
+const companyRoute = require("./module/reference/company/company.route");
 
 const app = express();
 
 dotenv.config();
-
-console.log("Allowed origin:", process.env.CLIENT_URL);
 
 app.use(
   cors({
@@ -24,6 +23,7 @@ app.use(helmet());
 app.use(cookieParser());
 
 app.use("/api/v1/auth", authRoute);
+app.use("/api/v1/company", companyRoute);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

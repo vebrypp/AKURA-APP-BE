@@ -11,7 +11,7 @@ const login = async (req, res, next) => {
   if (!username || !password)
     return res.status(409).json({ message: "Username/Password empty" });
   try {
-    const checkUser = await prisma.tD_User.findUnique({
+    const checkUser = await prisma.td_User.findUnique({
       where: {
         username,
       },
@@ -62,21 +62,28 @@ const logout = async (req, res, next) => {
 };
 
 const register = async (req, res, next) => {
-  const { name, username, password, company, address, email, phone } = req.body;
+  const { name, username, password } = req.body;
 
   try {
     const salt = bcrypt.genSaltSync(saltRounds);
     const hashPassword = bcrypt.hashSync(password, salt);
 
-    const response = await prisma.tD_User.create({
+    const checkUser = await prisma.td_User.findFirst({
+      where: {
+        OR: [{ name: name.toUpperCase() }, { username }],
+      },
+    });
+
+    if (checkUser)
+      return res
+        .status(409)
+        .json({ success: false, message: "Name or username already exist" });
+
+    const response = await prisma.td_User.create({
       data: {
-        name,
-        username,
+        name: name.toUpperCase(),
+        username: username,
         password: hashPassword,
-        company,
-        companyAddress: address,
-        email,
-        phone,
       },
     });
 
