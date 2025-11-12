@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const prisma = require("../../config/prismaClient");
 const jwt = require("jsonwebtoken");
+const cookieOptions = require("../../utils/cookieOptions");
 
 const saltRounds = 12;
 const tokenAge = 1;
@@ -34,9 +35,7 @@ const login = async (req, res, next) => {
     });
 
     res.cookie("Authorization", `Bearer ${token}`, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
+      ...cookieOptions,
       maxAge: tokenAge * 60 * 60 * 1000,
     });
 
@@ -56,7 +55,7 @@ const profile = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    res.clearCookie("Authorization");
+    res.clearCookie("Authorization", { ...cookieOptions });
 
     res.status(200).json({ success: true, message: "Berhasil Logout" });
   } catch (error) {
