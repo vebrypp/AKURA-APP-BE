@@ -1,10 +1,49 @@
 const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
+const filterHandler = require("../../../utils/filterHandler");
+const sortHandler = require("../../../utils/sortHandler");
 
 const getCompanies = async (req, res, next) => {
+  const {
+    limit = 10,
+    page = 1,
+    order = "desc",
+    sort = "createAt",
+    ...filters
+  } = req.query;
+
   try {
-    res.status(200).json({ success: true, data: [] });
+    const where = filterHandler(filters);
+    const sorter = sortHandler(sort, order);
+    console.log(where);
+
+    const currentPage = parseInt(page);
+    const take = parseInt(limit);
+    const skip = (currentPage - 1) * take;
+
+    const [data, total] = await Promise.all([
+      prisma.td_Company.findMany({
+        orderBy: sorter,
+        skip,
+        take,
+        where,
+      }),
+
+      prisma.td_Company.count({ where }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      pagination: {
+        total,
+        page: currentPage,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      },
+      data,
+    });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };
