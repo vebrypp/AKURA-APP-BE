@@ -2,6 +2,17 @@ const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
 const sortHandler = require("../../../utils/sortHandler");
+const { getCompanyType } = require("./konstanta");
+const {
+  notFoundMessage,
+  createMessage,
+  existMessage,
+  deleteMessage,
+} = require("../../../utils/message");
+
+const include = {
+  td_CompanyStaff: true,
+};
 
 const getCompanies = async (req, res, next) => {
   const {
@@ -15,7 +26,6 @@ const getCompanies = async (req, res, next) => {
   try {
     const where = filterHandler(filters);
     const sorter = sortHandler(sort, order);
-    console.log(where);
 
     const currentPage = parseInt(page);
     const take = parseInt(limit);
@@ -23,6 +33,7 @@ const getCompanies = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       prisma.td_Company.findMany({
+        include,
         orderBy: sorter,
         skip,
         take,
@@ -43,7 +54,32 @@ const getCompanies = async (req, res, next) => {
       data,
     });
   } catch (error) {
-    console.log(error);
+    next(error);
+  }
+};
+
+const getCompany = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const company = await prisma.td_Company.findFirst({
+      where: {
+        id,
+      },
+      include,
+    });
+
+    if (!company)
+      return res.status(404).json({ success: false, message: notFoundMessage });
+
+    const data = {
+      id: company.id,
+      company: `${getCompanyType(company.type)} ${company.company}`,
+      address: company.address,
+    };
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
     next(error);
   }
 };
@@ -69,79 +105,262 @@ const postCompany = async (req, res, next) => {
     if (existCompany)
       return res
         .status(409)
-        .json({ success: " false", message: "Company is already exist" });
+        .json({ success: false, message: existMessage("Company") });
 
-    const createCompany = await prisma.td_Company.create({
-      data: {
-        type,
-        company: company.toUpperCase(),
-        address: address.toUpperCase(),
-      },
-    });
+    const names = staff.map((s) => s.name.toUpperCase());
 
-    if (!createCompany)
-      return res.status(409).json({
+    const hasDuplicate = names.some((name, idx) => names.indexOf(name) !== idx);
+
+    if (hasDuplicate) {
+      return res.status(400).json({
         success: false,
-        message: "Failed to create company reference",
+        message: "Duplicate staff names are not allowed.",
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const newCompany = await tx.td_Company.create({
+        data: {
+          type,
+          company: company.toUpperCase(),
+          address: address.toUpperCase(),
+        },
       });
 
-    const createHistoryCompany = await prisma.th_Company.create({
-      data: {
-        companyId: createCompany.id,
-        action: 1,
-        name: user?.name,
+      await tx.th_Company.create({
+        data: {
+          companyId: newCompany.id,
+          action: 1,
+          name: user?.name,
+        },
+      });
+
+      const createdStaffs = await Promise.all(
+        staff.map(async ({ title, name }) => {
+          const newStaff = await tx.td_CompanyStaff.create({
+            data: {
+              title,
+              name: name.toUpperCase(),
+              companyId: newCompany.id,
+            },
+          });
+
+          await tx.th_CompanyStaff.create({
+            data: {
+              companyStaffId: newStaff.id,
+              action: 1,
+              name: user?.name || "SYSTEM",
+            },
+          });
+
+          return newStaff;
+        })
+      );
+
+      return { newCompany, createdStaffs };
+    });
+
+    res.status(201).json({ success: true, message: createMessage("Company") });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const postStaff = async (req, res, next) => {
+  const { id, staff } = req.body;
+  const user = req.user;
+  const errorValidation = validationResult(req);
+
+  if (!errorValidation.isEmpty())
+    return res
+      .status(400)
+      .json({ success: false, message: errorValidation.array()[0].msg });
+
+  try {
+    const company = await prisma.td_Company.findFirst({
+      where: {
+        id,
       },
     });
 
-    if (!createHistoryCompany)
-      return res
-        .status(409)
-        .json({ success: false, message: "Failed to create company history" });
+    if (!company)
+      return res.status(404).json({ success: false, message: notFoundMessage });
 
-    const createCompanyStaff = async () => {
-      let count = 0;
+    const names = staff.map((s) => s.name.toUpperCase());
 
-      for (let i = 0; i < staff.length; i++) {
-        const { title, name } = staff[i];
+    const hasDuplicate = names.some((name, idx) => names.indexOf(name) !== idx);
 
-        const createStaff = await prisma.td_CompanyStaff.create({
-          data: {
-            title,
-            companyId: createCompany.id,
-            name: name.toUpperCase(),
+    if (hasDuplicate) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate staff names are not allowed.",
+      });
+    }
+
+    const existingStaff = await prisma.td_CompanyStaff.findMany({
+      where: {
+        companyId: company.id,
+        name: { in: names },
+      },
+    });
+
+    if (existingStaff.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: existMessage("Staff"),
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const createdStaff = await Promise.all(
+        staff.map(async ({ title, name }) => {
+          const newStaff = await tx.td_CompanyStaff.create({
+            data: {
+              companyId: company.id,
+              title,
+              name: name.toUpperCase(),
+            },
+          });
+
+          await tx.th_CompanyStaff.create({
+            data: {
+              companyStaffId: newStaff.id,
+              action: 1,
+              name: user?.name,
+            },
+          });
+
+          return newStaff;
+        })
+      );
+
+      return createdStaff;
+    });
+
+    res.status(201).json({ success: true, message: createMessage("Staff") });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCompanyStaff = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const company = await prisma.td_Company.findFirst({
+      where: {
+        id,
+      },
+    });
+
+    if (!company)
+      return res.status(404).json({ success: false, message: notFoundMessage });
+
+    const data = await prisma.td_CompanyStaff.findMany({
+      where: {
+        companyId: company.id,
+      },
+    });
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next();
+  }
+};
+
+const deleteCompany = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const company = await prisma.td_Company.findFirst({
+      where: {
+        id,
+      },
+      include,
+    });
+
+    if (!company)
+      return res.status(404).json({ success: false, message: notFoundMessage });
+
+    const staffIds = company.td_CompanyStaff.map((staff) => staff.id);
+
+    await prisma.$transaction(async (tx) => {
+      if (staffIds.length > 0) {
+        await tx.th_CompanyStaff.deleteMany({
+          where: {
+            companyStaffId: {
+              in: staffIds,
+            },
           },
         });
 
-        const createHistoryStaff = await prisma.th_CompanyStaff.create({
-          data: {
-            companyStaffId: createStaff.id,
-            action: 1,
-            name: user?.name,
+        await tx.td_CompanyStaff.deleteMany({
+          where: {
+            companyId: company.id,
           },
         });
-
-        if (createStaff && createHistoryStaff) count++;
       }
 
-      return count;
-    };
+      await tx.th_Company.deleteMany({
+        where: {
+          companyId: company.id,
+        },
+      });
 
-    const result = await createCompanyStaff();
+      await tx.td_Company.delete({
+        where: {
+          id: company.id,
+        },
+      });
+    });
 
-    if (result !== staff.length)
+    res.status(200).json({ success: true, message: deleteMessage("Company") });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteCompanyStaff = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const staff = await prisma.td_CompanyStaff.findFirst({
+      where: {
+        id,
+      },
+    });
+
+    if (!staff)
       return res
-        .status(409)
-        .json({ success: false, message: "Failed to create staff" });
+        .status(200)
+        .json({ success: false, message: notFoundMessage("Staff") });
 
-    res
-      .status(201)
-      .json({ success: true, message: "Success create company reference" });
+    await prisma.$transaction([
+      prisma.th_CompanyStaff.deleteMany({
+        where: {
+          companyStaffId: id,
+        },
+      }),
+
+      prisma.td_CompanyStaff.delete({
+        where: {
+          id,
+        },
+      }),
+    ]);
+
+    res.status(200).json({ success: true, message: deleteMessage("Staff") });
   } catch (error) {
     next(error);
   }
 };
 
 module.exports = {
+  getCompany,
   getCompanies,
+  getCompanyStaff,
   postCompany,
+  postStaff,
+  deleteCompany,
+  deleteCompanyStaff,
 };
