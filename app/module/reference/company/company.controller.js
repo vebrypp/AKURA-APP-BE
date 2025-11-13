@@ -10,8 +10,12 @@ const {
   deleteMessage,
 } = require("../../../utils/message");
 
-const include = {
-  td_CompanyStaff: true,
+const includeCompany = {
+  staff: true,
+};
+
+const includeCompanyStaff = {
+  company: true,
 };
 
 const getCompanies = async (req, res, next) => {
@@ -33,7 +37,7 @@ const getCompanies = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       prisma.td_Company.findMany({
-        include,
+        include: includeCompany,
         orderBy: sorter,
         skip,
         take,
@@ -66,7 +70,7 @@ const getCompany = async (req, res, next) => {
       where: {
         id,
       },
-      include,
+      include: includeCompany,
     });
 
     if (!company)
@@ -243,6 +247,18 @@ const postStaff = async (req, res, next) => {
   }
 };
 
+const getStaffOption = async (req, res, next) => {
+  try {
+    const data = await prisma.td_CompanyStaff.findMany({
+      include: includeCompanyStaff,
+    });
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getCompanyStaff = async (req, res, next) => {
   const { id } = req.params;
 
@@ -359,6 +375,7 @@ module.exports = {
   getCompany,
   getCompanies,
   getCompanyStaff,
+  getStaffOption,
   postCompany,
   postStaff,
   deleteCompany,

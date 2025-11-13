@@ -4,6 +4,7 @@ const verifyToken = require("../../../middleware/verifyToken");
 const {
   getCompanies,
   getCompany,
+  getStaffOption,
   postCompany,
   postStaff,
   getCompanyStaff,
@@ -17,6 +18,7 @@ const {
 
 router.get("/", verifyToken, getCompanies);
 router.get("/:id", verifyToken, getCompany);
+router.get("/staff/option", verifyToken, getStaffOption);
 router.get("/staff/:id", verifyToken, getCompanyStaff);
 router.post("/", verifyToken, validateCompany, postCompany);
 router.post("/staff", verifyToken, validateCompanyStaff, postStaff);

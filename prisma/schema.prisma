@@ -31,8 +31,8 @@ model td_Company {
   address         String            @db.Text
   createAt        DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
-  th_Company      th_Company[]
-  td_CompanyStaff td_CompanyStaff[]
+  history         th_Company[]
+  staff           td_CompanyStaff[]
 }
 
 model th_Company {
@@ -42,7 +42,7 @@ model th_Company {
   action          Int
   createAt        DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
-  td_Company      td_Company  @relation(fields: [companyId], references: [id])
+  company         td_Company  @relation(fields: [companyId], references: [id])
 }
 
 model td_CompanyStaff {
@@ -52,8 +52,8 @@ model td_CompanyStaff {
   name            String            @db.VarChar(255)
   createAt        DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
-  td_Company      td_Company        @relation(fields: [companyId], references: [id])
-  th_CompanyStaff th_CompanyStaff[]
+  company         td_Company        @relation(fields: [companyId], references: [id])
+  staff           th_CompanyStaff[]
 }
 
 model th_CompanyStaff {
@@ -63,5 +63,5 @@ model th_CompanyStaff {
   action          Int
   createAt        DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  td_CompanyStaff td_CompanyStaff @relation(fields: [companyStaffId], references: [id])
+  staff           td_CompanyStaff @relation(fields: [companyStaffId], references: [id])
 }
