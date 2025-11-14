@@ -1,7 +1,7 @@
 const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
-const { createMessage } = require("../../../utils/message");
+const { createMessage, notFoundMessage } = require("../../../utils/message");
 const sortHandler = require("../../../utils/sortHandler");
 const {
   konstantaAction,
@@ -57,6 +57,25 @@ const getServices = async (req, res, next) => {
   }
 };
 
+const getService = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const data = await prisma.td_Service.findFirst({
+      where: {
+        id,
+      },
+    });
+
+    if (!data)
+      return res.status(404).json({ success: false, message: notFoundMessage });
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const postService = async (req, res, next) => {
   const {
     service,
@@ -104,4 +123,4 @@ const postService = async (req, res, next) => {
   }
 };
 
-module.exports = { getServices, postService };
+module.exports = { getService, getServices, postService };
