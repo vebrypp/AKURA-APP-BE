@@ -1,8 +1,7 @@
 const cookieOptions = {
   httpOnly: true,
-  secure: true,
-  sameSite: "None",
-  path: "/",
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
 
 module.exports = cookieOptions;
