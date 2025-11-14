@@ -34,7 +34,7 @@ const login = async (req, res, next) => {
       expiresIn: "1h",
     });
 
-    res.cookie("Authorization", `Bearer ${token}`, {
+    res.cookie("Authorization", token, {
       ...cookieOptions,
       maxAge: tokenAge * 60 * 60 * 1000,
     });
