@@ -46,4 +46,13 @@ const validateService = [
     .bail(),
 ];
 
-module.exports = { validateService };
+const validateScope = [
+  body("serviceId")
+    .trim()
+    .notEmpty()
+    .withMessage("Service ID cannot be empty")
+    .bail(),
+  body("scope").trim().notEmpty().withMessage("Scope cannot be empty.").bail(),
+];
+
+module.exports = { validateService, validateScope };

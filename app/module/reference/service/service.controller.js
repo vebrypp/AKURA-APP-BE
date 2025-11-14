@@ -122,5 +122,31 @@ const postService = async (req, res, next) => {
     next(error);
   }
 };
+const postScope = async (req, res, next) => {
+  const { serviceId, scope } = req.body;
+  const user = req.user;
 
-module.exports = { getService, getServices, postService };
+  try {
+    await prisma.$transaction(async (tx) => {
+      const newScope = await tx.td_ServiceScope.create({
+        data: {
+          serviceId,
+          scope,
+        },
+      });
+
+      await tx.th_ServiceScope.create({
+        data: {
+          serviceScopeId: newScope.id,
+          action: konstantaAction.create,
+          name: user?.name,
+        },
+      });
+    });
+    res.status(201).json({ success: true, message: createMessage("Scope") });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getService, getServices, postService, postScope };
