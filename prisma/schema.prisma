@@ -84,6 +84,7 @@ model td_Service {
 model th_Service {
   id              String          @id @default(uuid())
   serviceId       String          @db.VarChar(255)
+  action          Int
   name            String          @db.VarChar(255)
   createAt        DateTime        @default(now())
   updatedAt       DateTime        @updatedAt

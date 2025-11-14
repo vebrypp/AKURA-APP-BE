@@ -1,6 +1,12 @@
+const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
+const { createMessage } = require("../../../utils/message");
 const sortHandler = require("../../../utils/sortHandler");
+const {
+  konstantaAction,
+  getMeasurementUnit,
+} = require("../../../utils/konstanta");
 
 const include = { scope: true };
 
@@ -41,22 +47,61 @@ const getServices = async (req, res, next) => {
         limit: take,
         totalPages: Math.ceil(total / take),
       },
-      data,
-    });
-
-    res.status(200).json({
-      success: true,
-      pagination: {
-        total,
-        page: currentPage,
-        limit: take,
-        totalPages: Math.ceil(total / take),
-      },
-      data,
+      data: data.map(({ measurementUnit, ...rest }) => ({
+        ...rest,
+        measurementUnit: getMeasurementUnit(measurementUnit),
+      })),
     });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { getServices };
+const postService = async (req, res, next) => {
+  const {
+    service,
+    description,
+    size,
+    quantity,
+    measurementUnit,
+    basePrice,
+    specialPrice,
+  } = req.body;
+  const user = req.user;
+
+  const errorValidation = validationResult(req);
+
+  if (!errorValidation.isEmpty())
+    return res
+      .status(409)
+      .json({ success: false, message: errorValidation.array()[0].msg });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const createService = await tx.td_Service.create({
+        data: {
+          service,
+          description,
+          size,
+          quantity,
+          measurementUnit,
+          basePrice,
+          specialPrice,
+        },
+      });
+
+      await tx.th_Service.create({
+        data: {
+          serviceId: createService.id,
+          name: user?.name,
+          action: konstantaAction.create,
+        },
+      });
+    });
+    res.status(201).json({ success: true, message: createMessage("Service") });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getServices, postService };
