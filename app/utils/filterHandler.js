@@ -22,18 +22,11 @@ const filterHandler = (filters) => {
 
     let condition;
 
-    if (type === "date") {
+    if (type === "date" && !key.includes("size")) {
       condition = {
         equals: new Date(new Date(value).getTime() + 7 * 60 * 60 * 1000),
       };
-    } else if (
-      type === "number" &&
-      !(
-        key.includes("nppbkc") ||
-        key.includes("kode") ||
-        key.includes("barcode")
-      )
-    ) {
+    } else if (type === "number" && !key.includes("size")) {
       condition = { equals: parseFloat(value) };
     } else {
       condition = { contains: value, mode: "insensitive" };

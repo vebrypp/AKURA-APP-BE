@@ -1,11 +1,10 @@
-const notFoundMessage = "Error 404. Not Found.";
-const createMessage = (title) => `${title} created successfully.`;
-const deleteMessage = (title) => `${title} has been successfully deleted.`;
-const existMessage = (title) => `${title} already exists. Please Check Again.`;
+const MESSAGES = {
+  INVALID_ID: "Invalid ID. Please check again.",
+  NOT_FOUND: "The requested resource was not found.",
 
-module.exports = {
-  notFoundMessage,
-  createMessage,
-  deleteMessage,
-  existMessage,
+  CREATED: (title) => `${title} has been created successfully.`,
+  DELETED: (title) => `${title} has been deleted successfully.`,
+  EXISTS: (title) => `${title} already exists. Please check again.`,
 };
+
+module.exports = MESSAGES;

@@ -1,5 +1,23 @@
 const { body } = require("express-validator");
 
+const validateScopeArray = body("scopeList")
+  .isArray({ min: 1 })
+  .withMessage("Scope must contain at least one member")
+  .bail()
+  .custom((scopeArr) => {
+    if (!Array.isArray(scopeArr)) {
+      throw new Error("Staff must be an array");
+    }
+
+    scopeArr.forEach((scopeData) => {
+      if (!scopeData.scope || typeof scopeData.scope !== "string") {
+        throw new Error(`Scope is invalid. Please check again.`);
+      }
+    });
+
+    return true;
+  });
+
 const validateService = [
   body("service")
     .trim()
@@ -52,7 +70,7 @@ const validateScope = [
     .notEmpty()
     .withMessage("Service ID cannot be empty")
     .bail(),
-  body("scope").trim().notEmpty().withMessage("Scope cannot be empty.").bail(),
+  validateScopeArray,
 ];
 
 module.exports = { validateService, validateScope };

@@ -20,7 +20,24 @@ const getMeasurementUnit = (val) => {
   }
 };
 
+const getInquiryMethod = (val) => {
+  switch (val) {
+    case 1:
+      return "Email";
+    case 2:
+      return "WhatsApp";
+    case 3:
+      return "Verbal";
+    case 4:
+      return "Job Order Request";
+
+    default:
+      return null;
+  }
+};
+
 module.exports = {
   konstantaAction,
   getMeasurementUnit,
+  getInquiryMethod,
 };

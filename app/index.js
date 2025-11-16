@@ -8,6 +8,7 @@ const notFoundHandler = require("./middleware/notFoundHandler");
 const authRoute = require("./module/auth/auth.route");
 const companyRoute = require("./module/reference/company/company.route");
 const serviceRoute = require("./module/reference/service/service.route");
+const quotationRoute = require("./module/quotation/quotation.route");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use(cookieParser());
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/company", companyRoute);
 app.use("/api/v1/service", serviceRoute);
+app.use("/api/v1/quotation", quotationRoute);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -3,12 +3,7 @@ const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
 const sortHandler = require("../../../utils/sortHandler");
 const { getCompanyType } = require("./konstanta");
-const {
-  notFoundMessage,
-  createMessage,
-  existMessage,
-  deleteMessage,
-} = require("../../../utils/message");
+const MSG = require("../../../utils/message");
 
 const includeCompany = {
   staff: true,
@@ -74,7 +69,7 @@ const getCompany = async (req, res, next) => {
     });
 
     if (!company)
-      return res.status(404).json({ success: false, message: notFoundMessage });
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
     const data = {
       id: company.id,
@@ -109,7 +104,7 @@ const postCompany = async (req, res, next) => {
     if (existCompany)
       return res
         .status(409)
-        .json({ success: false, message: existMessage("Company") });
+        .json({ success: false, message: MSG.EXISTS("Company") });
 
     const names = staff.map((s) => s.name.toUpperCase());
 
@@ -164,7 +159,7 @@ const postCompany = async (req, res, next) => {
       return { newCompany, createdStaffs };
     });
 
-    res.status(201).json({ success: true, message: createMessage("Company") });
+    res.status(201).json({ success: true, message: MSG.CREATED("Company") });
   } catch (error) {
     next(error);
   }
@@ -188,7 +183,7 @@ const postStaff = async (req, res, next) => {
     });
 
     if (!company)
-      return res.status(404).json({ success: false, message: notFoundMessage });
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
     const names = staff.map((s) => s.name.toUpperCase());
 
@@ -211,7 +206,7 @@ const postStaff = async (req, res, next) => {
     if (existingStaff.length > 0) {
       return res.status(409).json({
         success: false,
-        message: existMessage("Staff"),
+        message: MSG.EXISTS("Staff"),
       });
     }
 
@@ -241,7 +236,7 @@ const postStaff = async (req, res, next) => {
       return createdStaff;
     });
 
-    res.status(201).json({ success: true, message: createMessage("Staff") });
+    res.status(201).json({ success: true, message: MSG.CREATED("Staff") });
   } catch (error) {
     next(error);
   }
@@ -270,7 +265,7 @@ const getCompanyStaff = async (req, res, next) => {
     });
 
     if (!company)
-      return res.status(404).json({ success: false, message: notFoundMessage });
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
     const data = await prisma.td_CompanyStaff.findMany({
       where: {
@@ -292,13 +287,13 @@ const deleteCompany = async (req, res, next) => {
       where: {
         id,
       },
-      include,
+      include: includeCompany,
     });
 
     if (!company)
-      return res.status(404).json({ success: false, message: notFoundMessage });
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
-    const staffIds = company.td_CompanyStaff.map((staff) => staff.id);
+    const staffIds = company.staff.map((staff) => staff.id);
 
     await prisma.$transaction(async (tx) => {
       if (staffIds.length > 0) {
@@ -330,7 +325,7 @@ const deleteCompany = async (req, res, next) => {
       });
     });
 
-    res.status(200).json({ success: true, message: deleteMessage("Company") });
+    res.status(200).json({ success: true, message: MSG.DELETED("Company") });
   } catch (error) {
     next(error);
   }
@@ -349,7 +344,7 @@ const deleteCompanyStaff = async (req, res, next) => {
     if (!staff)
       return res
         .status(200)
-        .json({ success: false, message: notFoundMessage("Staff") });
+        .json({ success: false, message: MSG.NOT_FOUND("Staff") });
 
     await prisma.$transaction([
       prisma.th_CompanyStaff.deleteMany({
@@ -365,7 +360,7 @@ const deleteCompanyStaff = async (req, res, next) => {
       }),
     ]);
 
-    res.status(200).json({ success: true, message: deleteMessage("Staff") });
+    res.status(200).json({ success: true, message: MSG.DELETED("Staff") });
   } catch (error) {
     next(error);
   }
