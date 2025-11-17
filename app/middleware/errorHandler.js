@@ -1,5 +1,9 @@
 const errorHandler = (err, req, res, next) => {
-  console.log(err);
+  if (err?.code === "P2024")
+    return res
+      .status(err.status || 500)
+      .json({ success: false, message: "Request timeout." });
+
   res.status(err.status || 500).json({
     success: false,
     message:

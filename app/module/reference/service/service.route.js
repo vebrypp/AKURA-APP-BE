@@ -3,18 +3,20 @@ const route = express.Router();
 const verifyToken = require("../../../middleware/verifyToken");
 const { validateService, validateScope } = require("./service.validator");
 const {
-  getServices,
-  getService,
+  getServiceOption,
   getScopes,
+  getDescriptions,
+  getDescription,
   postService,
   postScope,
   deleteService,
   deleteScope,
 } = require("./service.controller");
 
-route.get("/", verifyToken, getServices);
+route.get("/description", verifyToken, getDescriptions);
+route.get("/description/:id", verifyToken, getDescription);
+route.get("/option", verifyToken, getServiceOption);
 route.get("/scope", verifyToken, getScopes);
-route.get("/:id", verifyToken, getService);
 route.post("/", verifyToken, validateService, postService);
 route.post("/scope", verifyToken, validateScope, postScope);
 route.delete("/:id", verifyToken, deleteService);

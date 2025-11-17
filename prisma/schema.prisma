@@ -69,61 +69,78 @@ model th_CompanyStaff {
 }
 
 model td_Service {
-  id                String                @id @default(uuid())
-  service           String                @db.VarChar(255)
-  createAt          DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  history           th_Service[]
-  quotationService  td_QuotationService[]
-}
-
-model td_ServiceDescription {
-  id                String                @id @default(uuid())
-  description       String                @db.VarChar(255)
-  scope             td_ServiceScope[]
-  createAt          DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-}
-
-model td_ServiceDescriptionItem {
-  id                String                @id @default(uuid())
-  size              String                @db.VarChar(255)
-  quantity          Int
-  measurementUnit   Int
-  basePrice         Decimal
-  specialPrice      Decimal
-  createAt          DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  id                  String                @id @default(uuid())
+  service             String                @db.VarChar(255)
+  createAt            DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  description         td_ServiceDescription[]
+  quotation           td_QuotationService[]
+  history             th_Service[]
 }
 
 model th_Service {
   id              String          @id @default(uuid())
-  serviceId       String          @db.VarChar(255)
   action          Int
   name            String          @db.VarChar(255)
+  serviceId       String          @db.VarChar(255)
   createAt        DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   service         td_Service      @relation(fields: [serviceId], references: [id])
 }
 
-model td_ServiceScope {
+model td_ServiceDescription {
   id                String                @id @default(uuid())
+  description       String                @db.VarChar(255)
   serviceId         String                @db.VarChar(255)
-  scope             String                @db.Text
   createAt          DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   service           td_Service            @relation(fields: [serviceId], references: [id])
-  history           th_ServiceScope[]
+  scope             td_ServiceScope[]
+  items             td_ServiceDescriptionItem[]
+  history           th_ServiceDescription[]
+}
+
+model th_ServiceDescription {
+  id                    String                @id @default(uuid())
+  action                Int
+  name                  String                @db.VarChar(255)
+  descriptionId         String                @db.VarChar(255)
+  createAt              DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  description           td_ServiceDescription @relation(fields: [descriptionId], references:[id])
+}
+
+model td_ServiceDescriptionItem {
+  id                  String                @id @default(uuid())
+  size                String                @db.VarChar(255)
+  quantity            Int
+  measurementUnit     Int
+  basePrice           Decimal
+  specialPrice        Decimal
+  descriptionId       String                @db.VarChar(255)
+  createAt            DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  description         td_ServiceDescription @relation(fields: [descriptionId], references: [id])
+}
+
+model td_ServiceScope {
+  id                  String                @id @default(uuid())
+  scope               String                @db.Text
+  descriptionId       String                @db.VarChar(255)
+  createAt            DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  description         td_ServiceDescription @relation(fields: [descriptionId], references: [id])
+  history             th_ServiceScope[]
 }
 
 model th_ServiceScope {
   id              String          @id @default(uuid())
-  serviceScopeId  String          @db.VarChar(255)
   action          Int
   name            String          @db.VarChar(255)
+  scopeId         String          @db.VarChar(255)
   createAt        DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  serviceScope    td_ServiceScope @relation(fields: [serviceScopeId], references: [id])
+  scope           td_ServiceScope @relation(fields: [scopeId], references: [id])
 }
 
 model td_Quotation {
@@ -153,9 +170,9 @@ model td_Quotation {
 
 model th_Quotation {
   id              String          @id @default(uuid())
-  quotationId     String          @db.VarChar(255)
   action          Int
   name            String          @db.VarChar(255)
+  quotationId     String          @db.VarChar(255)
   createAt        DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   quotation       td_Quotation    @relation(fields: [quotationId], references: [id])
@@ -164,8 +181,8 @@ model th_Quotation {
 
 model td_QuotationService {
   id              String        @id @default(uuid())
-  quotationId     String        @db.VarChar(255)
   serviceId       String        @db.VarChar(255)
+  quotationId     String        @db.VarChar(255)
   createAt        DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   quotation       td_Quotation  @relation(fields: [quotationId], references: [id])

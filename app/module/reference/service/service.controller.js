@@ -2,15 +2,19 @@ const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
 const sortHandler = require("../../../utils/sortHandler");
-const {
-  konstantaAction,
-  getMeasurementUnit,
-} = require("../../../utils/konstanta");
+const { konstantaAction } = require("../../../utils/konstanta");
 const MSG = require("../../../utils/message");
 
-const include = { scope: true };
+const include = {
+  description: true,
+};
 
-const getServices = async (req, res, next) => {
+const includeDescription = {
+  service: true,
+  scope: true,
+};
+
+const getDescriptions = async (req, res, next) => {
   const {
     limit = 10,
     page = 1,
@@ -28,16 +32,24 @@ const getServices = async (req, res, next) => {
     const skip = (currentPage - 1) * take;
 
     const [data, total] = await Promise.all([
-      prisma.td_Service.findMany({
-        include,
+      prisma.td_ServiceDescription.findMany({
+        include: includeDescription,
         orderBy: sorter,
         skip,
         take,
         where,
       }),
 
-      prisma.td_Service.count({ where }),
+      prisma.td_ServiceDescription.count({ where }),
     ]);
+
+    const newData = data.map(({ scope, ...descriptionData }) => {
+      const scopeArray = scope.map((dataScope) => dataScope.scope);
+      return {
+        ...descriptionData,
+        scope: scopeArray.join(", "),
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -47,32 +59,39 @@ const getServices = async (req, res, next) => {
         limit: take,
         totalPages: Math.ceil(total / take),
       },
-      data: data.map(({ measurementUnit, ...rest }) => ({
-        ...rest,
-        measurementUnit: getMeasurementUnit(measurementUnit),
-      })),
+      data: newData,
     });
   } catch (error) {
     next(error);
   }
 };
 
-const getService = async (req, res, next) => {
+const getDescription = async (req, res, next) => {
   const { id } = req.params;
 
   if (!id)
     return res.status(400).json({ success: false, message: MSG.INVALID_ID });
 
   try {
-    const data = await prisma.td_Service.findFirst({
+    const data = await prisma.td_ServiceDescription.findFirst({
       where: {
         id,
       },
-      include,
+      include: includeDescription,
     });
 
     if (!data)
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getServiceOption = async (req, res, next) => {
+  try {
+    const data = await prisma.td_Service.findMany();
 
     res.status(200).json({ success: true, data });
   } catch (error) {
@@ -125,15 +144,7 @@ const getScopes = async (req, res, next) => {
 };
 
 const postService = async (req, res, next) => {
-  const {
-    service,
-    description,
-    size,
-    quantity,
-    measurementUnit,
-    basePrice,
-    specialPrice,
-  } = req.body;
+  const { service, description, scopes } = req.body;
   const user = req.user;
 
   const errorValidation = validationResult(req);
@@ -145,35 +156,64 @@ const postService = async (req, res, next) => {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const createService = await tx.td_Service.create({
+      const newService = await tx.td_Service.create({
         data: {
           service,
-          description,
-          size,
-          quantity,
-          measurementUnit,
-          basePrice,
-          specialPrice,
         },
       });
 
       await tx.th_Service.create({
         data: {
-          serviceId: createService.id,
+          serviceId: newService.id,
           name: user?.name,
           action: konstantaAction.create,
         },
       });
+
+      const newDescription = await tx.td_ServiceDescription.create({
+        data: {
+          serviceId: newService.id,
+          description: description.toUpperCase(),
+        },
+      });
+
+      await tx.th_ServiceDescription.create({
+        data: {
+          descriptionId: newDescription.id,
+          name: user?.name,
+          action: konstantaAction.create,
+        },
+      });
+
+      for (const scope of scopes) {
+        const newScope = await tx.td_ServiceScope.create({
+          data: {
+            descriptionId: newDescription.id,
+            scope: scope.scope.toUpperCase(),
+          },
+        });
+
+        await tx.th_ServiceScope.create({
+          data: {
+            scopeId: newScope.id,
+            name: user?.name,
+            action: konstantaAction.create,
+          },
+        });
+      }
     });
     res.status(201).json({ success: true, message: MSG.CREATED("Service") });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };
 
 const postScope = async (req, res, next) => {
-  const { serviceId, scopeList } = req.body;
+  const { descriptionId, scopes } = req.body;
   const user = req.user;
+
+  console.log(req.body);
 
   const errorValidation = validationResult(req);
 
@@ -183,27 +223,27 @@ const postScope = async (req, res, next) => {
       .json({ success: false, message: errorValidation.array()[0].msg });
 
   try {
-    const service = await prisma.td_Service.findUnique({
+    const description = await prisma.td_ServiceDescription.findUnique({
       where: {
-        id: serviceId,
+        id: descriptionId,
       },
     });
 
-    if (!service)
+    if (!description)
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
     await prisma.$transaction(async (tx) => {
-      for (const item of scopeList) {
+      for (const item of scopes) {
         const newScope = await tx.td_ServiceScope.create({
           data: {
-            serviceId,
+            descriptionId: description.id,
             scope: item.scope,
           },
         });
 
         await tx.th_ServiceScope.create({
           data: {
-            serviceScopeId: newScope.id,
+            scopeId: newScope.id,
             action: konstantaAction.create,
             name: user?.name,
           },
@@ -213,7 +253,6 @@ const postScope = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: MSG.CREATED("Scope") });
   } catch (error) {
-    console.log(error);
     next(error);
   }
 };
@@ -235,35 +274,7 @@ const deleteService = async (req, res, next) => {
     if (!service)
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
-    await prisma.$transaction(async (tx) => {
-      for (let i = 0; i < service.scope.length; i++) {
-        const { id } = service.scope[i];
-
-        await prisma.th_ServiceScope.deleteMany({
-          where: {
-            serviceScopeId: id,
-          },
-        });
-
-        await prisma.td_ServiceScope.delete({
-          where: {
-            id,
-          },
-        });
-      }
-
-      await prisma.th_Service.deleteMany({
-        where: {
-          serviceId: service.id,
-        },
-      });
-
-      await prisma.td_Service.delete({
-        where: {
-          id: service.id,
-        },
-      });
-    });
+    await prisma.$transaction(async (tx) => {});
 
     res.status(200).json({ success: true, message: MSG.DELETED("Service") });
   } catch (error) {
@@ -276,6 +287,7 @@ const deleteScope = async (req, res, next) => {
 
   if (!id)
     return res.status(400).json({ success: false, message: MSG.INVALID_ID });
+
   try {
     const scope = await prisma.td_ServiceScope.findUnique({
       where: {
@@ -289,7 +301,7 @@ const deleteScope = async (req, res, next) => {
     await prisma.$transaction(async (tx) => {
       await tx.th_ServiceScope.deleteMany({
         where: {
-          serviceScopeId: scope.id,
+          scopeId: scope.id,
         },
       });
 
@@ -307,8 +319,9 @@ const deleteScope = async (req, res, next) => {
 };
 
 module.exports = {
-  getService,
-  getServices,
+  getDescription,
+  getDescriptions,
+  getServiceOption,
   getScopes,
   postService,
   postScope,

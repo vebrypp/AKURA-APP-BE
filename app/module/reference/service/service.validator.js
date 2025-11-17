@@ -1,74 +1,69 @@
 const { body } = require("express-validator");
 
-const validateScopeArray = body("scopeList")
+const validateScopeArray = body("scopes")
   .isArray({ min: 1 })
-  .withMessage("Scope must contain at least one member")
+  .withMessage("Scope must contain at least one scope")
   .bail()
   .custom((scopeArr) => {
+    // 1. Must be array
     if (!Array.isArray(scopeArr)) {
-      throw new Error("Staff must be an array");
+      throw new Error("Scope must be an array");
     }
 
+    // 2. Validate each scope item
     scopeArr.forEach((scopeData) => {
       if (!scopeData.scope || typeof scopeData.scope !== "string") {
         throw new Error(`Scope is invalid. Please check again.`);
       }
     });
 
+    // 3. Check duplicates
+    const normalized = scopeArr.map((s) => s.scope.toUpperCase().trim());
+    const unique = new Set(normalized);
+
+    if (unique.size !== normalized.length) {
+      throw new Error("Duplicate scope detected. Scopes must be unique.");
+    }
+
     return true;
   });
 
 const validateService = [
-  body("service")
-    .trim()
-    .notEmpty()
-    .withMessage("Service cannot be empty")
+  body("newService")
+    .isBoolean()
+    .withMessage("Invalid newService value.")
+    .toBoolean()
     .bail(),
+  body("serviceId")
+    .custom((val, { req }) => {
+      if (req.body.newService === false && !val) {
+        throw new Error("Service cannot be empty");
+      }
+      return true;
+    })
+    .bail()
+    .if((value, { req }) => req.body.newService === false)
+    .isUUID()
+    .withMessage("Invalid service ID"),
+  body("service").custom((val, { req }) => {
+    if (req.body.newService === true && !val) {
+      throw new Error("Service cannot be empty");
+    }
+    return true;
+  }),
   body("description")
     .trim()
     .notEmpty()
     .withMessage("Description cannot be empty")
     .bail(),
-  body("size").trim().notEmpty().withMessage("Size cannot be empty").bail(),
-  body("quantity")
-    .notEmpty()
-    .withMessage("Quantity cannot be empty")
-    .bail()
-    .isInt({ min: 1 })
-    .withMessage("Quantity must be number greater than 0")
-    .toInt()
-    .bail(),
-  body("measurementUnit")
-    .notEmpty()
-    .withMessage("Measurement Unit cannot be empty")
-    .bail()
-    .isInt()
-    .withMessage("Measurement unit is invalid or not supported.")
-    .toInt()
-    .bail(),
-  body("basePrice")
-    .notEmpty()
-    .withMessage("Base Price cannot be empty")
-    .bail()
-    .isInt({ min: 1 })
-    .withMessage("Base Price must be number greater than 0")
-    .toInt()
-    .bail(),
-  body("specialPrice")
-    .notEmpty()
-    .withMessage("Special Price cannot be empty")
-    .bail()
-    .isInt({ min: 1 })
-    .withMessage("Special Price must be number greater than 0")
-    .toInt()
-    .bail(),
+  validateScopeArray,
 ];
 
 const validateScope = [
-  body("serviceId")
+  body("descriptionId")
     .trim()
     .notEmpty()
-    .withMessage("Service ID cannot be empty")
+    .withMessage("Description id cannot be empty")
     .bail(),
   validateScopeArray,
 ];
