@@ -1,46 +1,24 @@
-const prisma = require("../config/prismaClient");
 const jwt = require("jsonwebtoken");
+const prisma = require("../config/prismaClient");
 
 const verifyToken = async (req, res, next) => {
   const auth = req.headers.authorization;
-
-  if (!auth)
-    return res.status(401).json({
-      success: false,
-      message: "Session expired. Please login again.",
-    });
+  if (!auth) return res.status(401).json({ message: "No token provided" });
 
   const token = auth.split(" ")[1];
-
-  if (!token)
-    return res.status(401).json({
-      success: false,
-      message: "Session expired. Please login again",
-    });
+  if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
     const payload = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-    const user = await prisma.td_User.findUnique({
-      where: {
-        id: payload.id,
-      },
-    });
+    const user = await prisma.td_User.findUnique({ where: { id: payload.id } });
+    if (!user) return res.status(401).json({ message: "User not found" });
 
-    const { password, createAt, updatedAt, ...safeUser } = user;
-
-    req.user = safeUser;
-
+    req.user = user;
     next();
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ success: false, message: "Token expired" });
-    } else if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ success: false, message: "Invalid token" });
-    } else {
-      return res
-        .status(500)
-        .json({ success: false, message: "Internal server error" });
-    }
+  } catch (err) {
+    if (err.name === "TokenExpiredError")
+      return res.status(401).json({ message: "Token expired" });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 

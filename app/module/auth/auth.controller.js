@@ -1,6 +1,5 @@
 const bcrypt = require("bcrypt");
 const prisma = require("../../config/prismaClient");
-const jwt = require("jsonwebtoken");
 const cookieOptions = require("../../utils/cookieOptions");
 const {
   createAccessToken,
@@ -61,45 +60,31 @@ const login = async (req, res, next) => {
   }
 };
 
-const refresh = async (req, res, next) => {
+const refresh = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
-
-    if (!token)
-      return res
-        .status(401)
-        .json({ message: "Session expired! Please login again." });
+    if (!token) return res.status(401).json({ message: "No refresh token" });
 
     let payload;
-
     try {
       payload = verifyRefreshToken(token);
-    } catch (e) {
-      return res.status(403).json({ success: false, message: "Invalid token" });
+    } catch {
+      return res.status(403).json({ message: "Invalid refresh token" });
     }
 
     const dbToken = await prisma.td_RefreshToken.findUnique({
       where: { token },
     });
-
-    if (
-      !dbToken ||
-      dbToken.revoked ||
-      new Date(dbToken.expiresAt) < new Date()
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Session expired. Please login again",
-      });
-    }
+    if (!dbToken || dbToken.revoked || new Date(dbToken.expiresAt) < new Date())
+      return res.status(403).json({ message: "Refresh token expired" });
 
     await prisma.td_RefreshToken.update({
       where: { token },
       data: { revoked: true },
     });
 
-    const newRefresh = createRefreshToken({ id: payload.id });
     const newAccess = createAccessToken({ id: payload.id });
+    const newRefresh = createRefreshToken({ id: payload.id });
 
     await prisma.td_RefreshToken.create({
       data: {
@@ -114,7 +99,7 @@ const refresh = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json({ accessToken: newAccess });
+    res.status(200).json({ accessToken: newAccess });
   } catch (error) {
     next(error);
   }
@@ -131,14 +116,15 @@ const profile = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     const token = req.cookies.refreshToken;
-    if (!token) {
+
+    if (token) {
       await prisma.td_RefreshToken.updateMany({
         where: { token },
         data: { revoked: true },
       });
-
-      res.clearCookie("refreshToken", { ...cookieOptions });
     }
+
+    res.clearCookie("refreshToken", { ...cookieOptions });
 
     res.status(200).json({ success: true, message: "Logged out" });
   } catch (error) {
