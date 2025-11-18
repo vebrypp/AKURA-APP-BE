@@ -236,7 +236,7 @@ const postScope = async (req, res, next) => {
         const newScope = await tx.td_ServiceScope.create({
           data: {
             descriptionId: description.id,
-            scope: item.scope,
+            scope: item.scope.toUpperCase(),
           },
         });
 
