@@ -10,8 +10,9 @@ const include = {
 };
 
 const includeDescription = {
-  service: true,
+  items: true,
   scope: true,
+  service: true,
 };
 
 const getDescriptions = async (req, res, next) => {
@@ -213,8 +214,6 @@ const postScope = async (req, res, next) => {
   const { descriptionId, scopes } = req.body;
   const user = req.user;
 
-  console.log(req.body);
-
   const errorValidation = validationResult(req);
 
   if (!errorValidation.isEmpty())
@@ -252,6 +251,59 @@ const postScope = async (req, res, next) => {
     });
 
     res.status(201).json({ success: true, message: MSG.CREATED("Scope") });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const postItem = async (req, res, next) => {
+  const { descriptionId, items } = req.body;
+  const user = req.user;
+
+  const errorValidation = validationResult(req);
+
+  if (!errorValidation.isEmpty())
+    return res
+      .status(400)
+      .json({ success: false, message: errorValidation.array()[0].msg });
+
+  try {
+    const description = await prisma.td_ServiceDescription.findUnique({
+      where: {
+        id: descriptionId,
+      },
+    });
+
+    if (!description)
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
+
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < items.length; i++) {
+        const { size, quantity, measurementUnit, basePrice, specialPrice } =
+          items[i];
+
+        const item = await tx.td_ServiceDescriptionItem.create({
+          data: {
+            descriptionId: description.id,
+            size: size.toUpperCase(),
+            quantity,
+            measurementUnit,
+            basePrice,
+            specialPrice,
+          },
+        });
+
+        await tx.th_ServiceDescriptionItem.create({
+          data: {
+            itemId: item.id,
+            action: konstantaAction.create,
+            name: user.name,
+          },
+        });
+      }
+    });
+
+    res.status(201).json({ success: true, message: MSG.CREATED("Item") });
   } catch (error) {
     next(error);
   }
@@ -325,6 +377,7 @@ module.exports = {
   getScopes,
   postService,
   postScope,
+  postItem,
   deleteService,
   deleteScope,
 };
