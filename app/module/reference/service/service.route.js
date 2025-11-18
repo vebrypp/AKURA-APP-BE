@@ -16,6 +16,7 @@ const {
   postItem,
   deleteService,
   deleteScope,
+  deleteItem,
 } = require("./service.controller");
 
 route.get("/description", verifyToken, getDescriptions);
@@ -27,5 +28,6 @@ route.post("/scope", verifyToken, validateScope, postScope);
 route.post("/description/item", validateItem, verifyToken, postItem);
 route.delete("/:id", verifyToken, deleteService);
 route.delete("/scope/:id", verifyToken, deleteScope);
+route.delete("/description/item/:id", verifyToken, deleteItem);
 
 module.exports = route;

@@ -370,6 +370,41 @@ const deleteScope = async (req, res, next) => {
   }
 };
 
+const deleteItem = async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!id)
+    return res.status(400).json({ success: false, message: MSG.INVALID_ID });
+  try {
+    const item = await prisma.td_ServiceDescriptionItem.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!item)
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.th_ServiceDescriptionItem.deleteMany({
+        where: {
+          itemId: item.id,
+        },
+      });
+
+      await tx.td_ServiceDescriptionItem.delete({
+        where: {
+          id: item.id,
+        },
+      });
+    });
+
+    res.status(200).json({ success: false, message: MSG.DELETED("Item") });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDescription,
   getDescriptions,
@@ -380,4 +415,5 @@ module.exports = {
   postItem,
   deleteService,
   deleteScope,
+  deleteItem,
 };
