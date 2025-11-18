@@ -23,6 +23,19 @@ model td_User {
   createAt          DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   quotation         td_Quotation[]
+  refreshToken      td_RefreshToken[]
+}
+
+model td_RefreshToken {
+  id                String    @id @default(uuid())
+  token             String    @unique
+  userId            String
+  revoked           Boolean   @default(false)
+  createAt          DateTime  @default(now())
+  expiresAt         DateTime
+  user              td_User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model td_Company {

@@ -87,7 +87,6 @@ const postQuotation = async (req, res, next) => {
     staffId,
     services,
   } = req.body;
-  console.log(req.body);
   const user = req.user;
 
   const errorValidation = validationResult(req);

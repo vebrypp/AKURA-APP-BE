@@ -205,7 +205,6 @@ const postService = async (req, res, next) => {
     });
     res.status(201).json({ success: true, message: MSG.CREATED("Service") });
   } catch (error) {
-    console.log(error);
     next(error);
   }
 };
