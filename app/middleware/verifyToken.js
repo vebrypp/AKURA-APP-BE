@@ -10,10 +10,13 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const payload = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
     const user = await prisma.td_User.findUnique({ where: { id: payload.id } });
+
     if (!user) return res.status(401).json({ message: "User not found" });
 
     req.user = user;
+
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError")

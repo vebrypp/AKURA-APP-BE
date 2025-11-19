@@ -9,6 +9,13 @@ const {
 
 const saltRounds = 12;
 
+const updateToken = async (token) => {
+  await prisma.td_RefreshToken.update({
+    where: { token },
+    data: { revoked: true },
+  });
+};
+
 const login = async (req, res, next) => {
   const { username, password } = req.body;
 
@@ -49,7 +56,7 @@ const login = async (req, res, next) => {
 
     res.cookie("refreshToken", refreshToken, {
       ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: Number(process.env.REFRESH_TOKEN_AGE) * 24 * 60 * 60 * 1000,
     });
 
     res
@@ -63,25 +70,59 @@ const login = async (req, res, next) => {
 const refresh = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
-    if (!token) return res.status(401).json({ message: "No refresh token" });
+
+    if (!token)
+      return res
+        .status(401)
+        .json({ success: false, message: "Token cannot be found." });
 
     let payload;
+
     try {
       payload = verifyRefreshToken(token);
     } catch {
-      return res.status(403).json({ message: "Invalid refresh token" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Invalid Token." });
     }
 
     const dbToken = await prisma.td_RefreshToken.findUnique({
       where: { token },
     });
-    if (!dbToken || dbToken.revoked || new Date(dbToken.expiresAt) < new Date())
-      return res.status(403).json({ message: "Refresh token expired" });
 
-    await prisma.td_RefreshToken.update({
-      where: { token },
-      data: { revoked: true },
-    });
+    const now = Date.now();
+    const lastActivity = dbToken.lastActivity.getTime();
+
+    const idle =
+      now - lastActivity > Number(process.env.INACTIVITY_LIMIT) * 60 * 1000;
+
+    if (!dbToken || dbToken.revoked) {
+      res.clearCookie("refreshToken", { ...cookieOptions });
+
+      return res.status(403).json({ message: "Invalid token." });
+    }
+
+    if (new Date(dbToken.expiresAt) < new Date()) {
+      res.clearCookie("refreshToken", { ...cookieOptions });
+
+      updateToken(token);
+
+      return res
+        .status(403)
+        .json({ message: "Token expired. Please login again" });
+    }
+
+    if (idle) {
+      res.clearCookie("refreshToken", { ...cookieOptions });
+
+      updateToken(token);
+
+      return res
+        .status(403)
+        .json({ message: "Session expired. Please login again" });
+    }
+
+    updateToken();
 
     const newAccess = createAccessToken({ id: payload.id });
     const newRefresh = createRefreshToken({ id: payload.id });
@@ -91,16 +132,18 @@ const refresh = async (req, res) => {
         token: newRefresh,
         userId: payload.id,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        lastActivity: new Date(),
       },
     });
 
     res.cookie("refreshToken", newRefresh, {
       ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: Number(process.env.REFRESH_TOKEN_AGE) * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({ accessToken: newAccess });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };

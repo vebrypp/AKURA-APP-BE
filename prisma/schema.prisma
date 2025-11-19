@@ -33,6 +33,7 @@ model td_RefreshToken {
   revoked           Boolean   @default(false)
   createAt          DateTime  @default(now())
   expiresAt         DateTime
+  lastActivity      DateTime  @default(now())
   user              td_User   @relation(fields: [userId], references: [id])
 
   @@index([userId])
