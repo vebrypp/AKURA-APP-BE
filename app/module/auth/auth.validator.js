@@ -19,4 +19,16 @@ const validateRegister = [
   handleValidation,
 ];
 
-module.exports = validateRegister;
+const validateLogin = [
+  body("username")
+    .trim()
+    .notEmpty()
+    .withMessage("Username cannot be empty")
+    .isLength({ min: 3 })
+    .withMessage("Username must be at least 3 character long"),
+  body("password").trim().notEmpty().withMessage("password cannot be empty"),
+
+  handleValidation,
+];
+
+module.exports = { validateRegister, validateLogin };

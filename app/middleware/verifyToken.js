@@ -17,15 +17,28 @@ const verifyToken = async (req, res, next) => {
 
     req.user = user;
 
+    const refreshToken = req.cookies.refreshToken;
+
+    if (refreshToken) {
+      await prisma.td_RefreshToken.updateMany({
+        where: { token: refreshToken },
+        data: { lastActivity: new Date() },
+      });
+    }
+
     next();
   } catch (err) {
-    if (err.name === "TokenExpiredError")
-      return res
-        .status(401)
-        .json({ message: "Token expired", isAuthenticated: true });
-    return res
-      .status(401)
-      .json({ message: "Invalid token", isAuthenticated: true });
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({
+        message: "Access token expired",
+        code: "ACCESS_TOKEN_EXPIRED",
+      });
+    }
+
+    return res.status(401).json({
+      message: "Invalid access token",
+      code: "ACCESS_TOKEN_INVALID",
+    });
   }
 };
 

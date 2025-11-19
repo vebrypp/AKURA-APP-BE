@@ -1,4 +1,3 @@
-const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
 const sortHandler = require("../../../utils/sortHandler");
@@ -148,13 +147,6 @@ const postService = async (req, res, next) => {
   const { service, description, scopes } = req.body;
   const user = req.user;
 
-  const errorValidation = validationResult(req);
-
-  if (!errorValidation.isEmpty())
-    return res
-      .status(400)
-      .json({ success: false, message: errorValidation.array()[0].msg });
-
   try {
     await prisma.$transaction(async (tx) => {
       const newService = await tx.td_Service.create({
@@ -213,13 +205,6 @@ const postScope = async (req, res, next) => {
   const { descriptionId, scopes } = req.body;
   const user = req.user;
 
-  const errorValidation = validationResult(req);
-
-  if (!errorValidation.isEmpty())
-    return res
-      .status(400)
-      .json({ success: false, message: errorValidation.array()[0].msg });
-
   try {
     const description = await prisma.td_ServiceDescription.findUnique({
       where: {
@@ -258,13 +243,6 @@ const postScope = async (req, res, next) => {
 const postItem = async (req, res, next) => {
   const { descriptionId, items } = req.body;
   const user = req.user;
-
-  const errorValidation = validationResult(req);
-
-  if (!errorValidation.isEmpty())
-    return res
-      .status(400)
-      .json({ success: false, message: errorValidation.array()[0].msg });
 
   try {
     const description = await prisma.td_ServiceDescription.findUnique({

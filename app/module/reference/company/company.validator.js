@@ -1,4 +1,5 @@
 const { body } = require("express-validator");
+const handleValidation = require("../../../middleware/handleValidation");
 
 const validateStaffArray = body("staff")
   .isArray({ min: 1 })
@@ -46,11 +47,15 @@ const validateCompany = [
     .withMessage("Company address cannot be empty")
     .bail(),
   validateStaffArray,
+
+  handleValidation,
 ];
 
 const validateCompanyStaff = [
   body("id").notEmpty().withMessage("Company cannot be empty").bail(),
   validateStaffArray,
+
+  handleValidation,
 ];
 
 module.exports = {

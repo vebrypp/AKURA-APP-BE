@@ -6,7 +6,7 @@ const handleValidation = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: "Data tidak lengkap",
+      message: errors.array()[0].msg,
       errors: errors.array().map((err) => ({
         field: err.param,
         message: err.msg,

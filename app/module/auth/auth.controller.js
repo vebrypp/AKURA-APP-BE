@@ -6,26 +6,18 @@ const {
   createRefreshToken,
   verifyRefreshToken,
 } = require("../../utils/jwt");
-const updateActivity = require("../../middleware/updateActivity");
 
 const saltRounds = 12;
 
-const updateToken = async (token) => {
-  try {
-    await prisma.td_RefreshToken.update({
-      where: { token },
-      data: { revoked: true },
-    });
-  } catch (error) {
-    console.log(error);
-  }
+const revokeToken = async (token) => {
+  await prisma.td_RefreshToken.update({
+    where: { token },
+    data: { revoked: true },
+  });
 };
 
 const login = async (req, res, next) => {
   const { username, password } = req.body;
-
-  if (!username || !password)
-    return res.status(409).json({ message: "Username/Password empty" });
 
   try {
     const user = await prisma.td_User.findUnique({
@@ -39,7 +31,7 @@ const login = async (req, res, next) => {
         .status(401)
         .json({ success: false, message: "Invalid username or password" });
 
-    const checkPassword = bcrypt.compareSync(password, user?.password);
+    const checkPassword = bcrypt.compare(password, user.password);
 
     if (!checkPassword)
       return res
@@ -72,7 +64,7 @@ const login = async (req, res, next) => {
   }
 };
 
-const refresh = async (req, res) => {
+const refresh = async (req, res, next) => {
   try {
     const token = req.cookies.refreshToken;
 
@@ -95,12 +87,6 @@ const refresh = async (req, res) => {
       where: { token },
     });
 
-    const now = Date.now();
-    const lastActivity = dbToken.lastActivity.getTime();
-
-    const idle =
-      (now - lastActivity) / 1000 > Number(process.env.INACTIVITY_LIMIT) * 60;
-
     if (!dbToken || dbToken.revoked) {
       res.clearCookie("refreshToken", { ...cookieOptions });
 
@@ -108,7 +94,7 @@ const refresh = async (req, res) => {
     }
 
     if (new Date(dbToken.expiresAt) < new Date()) {
-      updateToken(token);
+      revokeToken(token);
 
       res.clearCookie("refreshToken", { ...cookieOptions });
 
@@ -117,8 +103,14 @@ const refresh = async (req, res) => {
         .json({ message: "Token expired. Please login again" });
     }
 
+    const now = Date.now();
+    const lastActivity = dbToken.lastActivity.getTime();
+
+    const idle =
+      (now - lastActivity) / 1000 / 60 > Number(process.env.INACTIVITY_LIMIT);
+
     if (idle) {
-      updateToken(token);
+      revokeToken(token);
 
       res.clearCookie("refreshToken", { ...cookieOptions });
 
@@ -127,21 +119,41 @@ const refresh = async (req, res) => {
         .json({ message: "Session expired. Please login again" });
     }
 
-    updateActivity();
-
-    updateToken(token);
-
     const newAccess = createAccessToken({ id: payload.id });
     const newRefresh = createRefreshToken({ id: payload.id });
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await prisma.td_RefreshToken.create({
-      data: {
-        token: newRefresh,
-        userId: payload.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        lastActivity: new Date(),
-      },
-    });
+    try {
+      await prisma.$transaction([
+        prisma.td_RefreshToken.update({
+          where: { token },
+          data: { revoked: true },
+        }),
+        prisma.td_RefreshToken.create({
+          data: {
+            token: newRefresh,
+            userId: payload.id,
+            expiresAt: newExpiresAt,
+            lastActivity: new Date(),
+          },
+        }),
+      ]);
+    } catch (error) {
+      if (error.code === "P2002") {
+        const existingToken = await prisma.td_RefreshToken.findFirst({
+          where: { userId: payload.id, revoked: false },
+          orderBy: { createAt: "desc" },
+        });
+        if (existingToken) {
+          res.cookie("refreshToken", existingToken.token, {
+            ...cookieOptions,
+            maxAge: Number(process.env.REFRESH_TOKEN_AGE) * 24 * 60 * 60 * 1000,
+          });
+          return res.status(200).json({ accessToken: newAccess });
+        }
+      }
+      throw error;
+    }
 
     res.cookie("refreshToken", newRefresh, {
       ...cookieOptions,

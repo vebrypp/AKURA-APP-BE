@@ -1,4 +1,3 @@
-const { validationResult } = require("express-validator");
 const prisma = require("../../../config/prismaClient");
 const filterHandler = require("../../../utils/filterHandler");
 const sortHandler = require("../../../utils/sortHandler");
@@ -87,13 +86,6 @@ const postCompany = async (req, res, next) => {
   const { company, type, address, staff } = req.body;
   const user = req.user;
 
-  const errorValidation = validationResult(req);
-
-  if (!errorValidation.isEmpty())
-    return res
-      .status(400)
-      .json({ success: false, message: errorValidation.array()[0].msg });
-
   try {
     const existCompany = await prisma.td_Company.findFirst({
       where: {
@@ -168,12 +160,6 @@ const postCompany = async (req, res, next) => {
 const postStaff = async (req, res, next) => {
   const { id, staff } = req.body;
   const user = req.user;
-  const errorValidation = validationResult(req);
-
-  if (!errorValidation.isEmpty())
-    return res
-      .status(400)
-      .json({ success: false, message: errorValidation.array()[0].msg });
 
   try {
     const company = await prisma.td_Company.findFirst({

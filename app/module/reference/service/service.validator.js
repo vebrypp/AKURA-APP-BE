@@ -1,5 +1,6 @@
 const { body } = require("express-validator");
 const findDuplicateItems = require("../../../utils/findDuplicate");
+const handleValidation = require("../../../middleware/handleValidation");
 
 const validateScopeArray = body("scopes")
   .isArray({ min: 1 })
@@ -111,6 +112,8 @@ const validateService = [
     .withMessage("Description cannot be empty")
     .bail(),
   validateScopeArray,
+
+  handleValidation,
 ];
 
 const validateScope = [
@@ -120,6 +123,8 @@ const validateScope = [
     .withMessage("Description id cannot be empty")
     .bail(),
   validateScopeArray,
+
+  handleValidation,
 ];
 
 const validateItem = [
@@ -129,6 +134,8 @@ const validateItem = [
     .withMessage("Description id cannot be empty")
     .bail(),
   validateItemArray,
+
+  handleValidation,
 ];
 
 module.exports = { validateService, validateScope, validateItem };
