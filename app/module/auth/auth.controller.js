@@ -6,14 +6,19 @@ const {
   createRefreshToken,
   verifyRefreshToken,
 } = require("../../utils/jwt");
+const updateActivity = require("../../middleware/updateActivity");
 
 const saltRounds = 12;
 
 const updateToken = async (token) => {
-  await prisma.td_RefreshToken.update({
-    where: { token },
-    data: { revoked: true },
-  });
+  try {
+    await prisma.td_RefreshToken.update({
+      where: { token },
+      data: { revoked: true },
+    });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const login = async (req, res, next) => {
@@ -94,7 +99,7 @@ const refresh = async (req, res) => {
     const lastActivity = dbToken.lastActivity.getTime();
 
     const idle =
-      now - lastActivity > Number(process.env.INACTIVITY_LIMIT) * 60 * 1000;
+      (now - lastActivity) / 1000 > Number(process.env.INACTIVITY_LIMIT) * 60;
 
     if (!dbToken || dbToken.revoked) {
       res.clearCookie("refreshToken", { ...cookieOptions });
@@ -103,9 +108,9 @@ const refresh = async (req, res) => {
     }
 
     if (new Date(dbToken.expiresAt) < new Date()) {
-      res.clearCookie("refreshToken", { ...cookieOptions });
-
       updateToken(token);
+
+      res.clearCookie("refreshToken", { ...cookieOptions });
 
       return res
         .status(403)
@@ -113,16 +118,18 @@ const refresh = async (req, res) => {
     }
 
     if (idle) {
-      res.clearCookie("refreshToken", { ...cookieOptions });
-
       updateToken(token);
+
+      res.clearCookie("refreshToken", { ...cookieOptions });
 
       return res
         .status(403)
         .json({ message: "Session expired. Please login again" });
     }
 
-    updateToken();
+    updateActivity();
+
+    updateToken(token);
 
     const newAccess = createAccessToken({ id: payload.id });
     const newRefresh = createRefreshToken({ id: payload.id });
@@ -143,7 +150,6 @@ const refresh = async (req, res) => {
 
     res.status(200).json({ accessToken: newAccess });
   } catch (error) {
-    console.log(error);
     next(error);
   }
 };

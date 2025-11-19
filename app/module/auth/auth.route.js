@@ -9,12 +9,11 @@ const {
   refresh,
 } = require("./auth.controller");
 const verifyToken = require("../../middleware/verifyToken");
-const updateActivity = require("../../middleware/updateActivity");
 
 router.get("/profile", verifyToken, profile);
 router.post("/login", login);
 router.post("/logout", logout);
-router.post("/refresh", updateActivity, refresh);
+router.post("/refresh", refresh);
 router.post("/register", validateRegister, register);
 
 module.exports = router;
