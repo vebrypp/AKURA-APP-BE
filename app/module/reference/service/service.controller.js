@@ -144,28 +144,34 @@ const getScopes = async (req, res, next) => {
 };
 
 const postService = async (req, res, next) => {
-  const { service, description, scopes } = req.body;
+  const { newService, description, scopes } = req.body;
   const user = req.user;
 
   try {
     await prisma.$transaction(async (tx) => {
-      const newService = await tx.td_Service.create({
-        data: {
-          service,
-        },
-      });
+      let { serviceId } = req.body;
 
-      await tx.th_Service.create({
-        data: {
-          serviceId: newService.id,
-          name: user?.name,
-          action: konstantaAction.create,
-        },
-      });
+      if (newService) {
+        const createService = await tx.td_Service.create({
+          data: {
+            service: req.body.service,
+          },
+        });
+
+        await tx.th_Service.create({
+          data: {
+            serviceId: createService.id,
+            name: user?.name,
+            action: konstantaAction.create,
+          },
+        });
+
+        service = createService.id;
+      }
 
       const newDescription = await tx.td_ServiceDescription.create({
         data: {
-          serviceId: newService.id,
+          serviceId,
           description: description.toUpperCase(),
         },
       });
@@ -182,7 +188,9 @@ const postService = async (req, res, next) => {
         const newScope = await tx.td_ServiceScope.create({
           data: {
             descriptionId: newDescription.id,
-            scope: scope.scope.toUpperCase(),
+            scope: scope.scope
+              .replace(/[!\"#$%&'()*+\-./:;<=>?@[\\\]^_`{|}~]/g, "")
+              .toUpperCase(),
           },
         });
 
@@ -197,6 +205,7 @@ const postService = async (req, res, next) => {
     });
     res.status(201).json({ success: true, message: MSG.CREATED("Service") });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };
@@ -220,7 +229,9 @@ const postScope = async (req, res, next) => {
         const newScope = await tx.td_ServiceScope.create({
           data: {
             descriptionId: description.id,
-            scope: item.scope.toUpperCase(),
+            scope: item.scope
+              .replace(/[!\"#$%&'()*+\-./:;<=>?@[\\\]^_`{|}~]/g, "")
+              .toUpperCase(),
           },
         });
 
