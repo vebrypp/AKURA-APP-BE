@@ -4,7 +4,11 @@ const sortHandler = require("../../utils/sortHandler");
 
 const MSG = require("../../utils/message");
 const { validationResult } = require("express-validator");
-const { konstantaAction, getInquiryMethod } = require("../../utils/konstanta");
+const {
+  konstantaAction,
+  getInquiryMethod,
+  getTitleCustomer,
+} = require("../../utils/konstanta");
 const { formatDate } = require("../../utils/format");
 
 const include = {
@@ -69,6 +73,47 @@ const getQuotations = async (req, res, next) => {
   }
 };
 
+const getQuotataion = async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!id)
+    return res.status(409).json({ success: false, message: MSG.INVALID_ID });
+  try {
+    const data = await prisma.td_Quotation.findUnique({
+      include,
+      where: { id },
+    });
+
+    if (!data)
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
+
+    const quotation = {
+      id: data.id,
+      no: data.no,
+      date: formatDate(data.date),
+      customer: `${getTitleCustomer(data.staff.title)} ${data.staff.name}`,
+      company: data.staff.company.company,
+      companyAddress: data.staff.company.address,
+      inquiryMethod: getInquiryMethod(data.inquiryMethod),
+      inquiryDate: formatDate(data.inquiryDate),
+      subject: data.subject,
+      termOfPayment: data.termOfPayment,
+      validity: data.validity,
+      tax: data.tax,
+      supplyAkura: data.supplyAkura,
+      supplyCustomer: data.supplyCustomer,
+      location: data.location,
+      accomplished: data.accomplished,
+      deliveryReports: data.deliveryReports,
+      preparedBy: data.user.name,
+    };
+
+    res.status(200).json({ success: true, data: quotation });
+  } catch (error) {
+    next();
+  }
+};
+
 const postQuotation = async (req, res, next) => {
   const {
     no,
@@ -127,10 +172,10 @@ const postQuotation = async (req, res, next) => {
       });
 
       for (const service of services) {
-        await tx.td_QuotationService.create({
+        await tx.td_QuotationDescription.create({
           data: {
             quotationId: newQuotation.id,
-            serviceId: service.id,
+            descriptionId: service.id,
           },
         });
       }
@@ -159,7 +204,7 @@ const deleteQuotation = async (req, res, next) => {
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
     await prisma.$transaction(async (tx) => {
-      await tx.td_QuotationService.deleteMany({
+      await tx.td_QuotationDescription.deleteMany({
         where: {
           quotationId: quotation.id,
         },
@@ -186,6 +231,7 @@ const deleteQuotation = async (req, res, next) => {
 
 module.exports = {
   getQuotations,
+  getQuotataion,
   postQuotation,
   deleteQuotation,
 };

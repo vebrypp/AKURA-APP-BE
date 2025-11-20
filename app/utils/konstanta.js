@@ -36,8 +36,21 @@ const getInquiryMethod = (val) => {
   }
 };
 
+const getTitleCustomer = (val) => {
+  switch (val) {
+    case 1:
+      return "Mr.";
+    case 2:
+      return "Mrs.";
+
+    default:
+      return null;
+  }
+};
+
 module.exports = {
   konstantaAction,
   getMeasurementUnit,
   getInquiryMethod,
+  getTitleCustomer,
 };
