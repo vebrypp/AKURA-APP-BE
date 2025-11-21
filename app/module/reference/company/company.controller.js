@@ -11,6 +11,7 @@ const includeCompany = {
 
 const includeCompanyStaff = {
   company: true,
+  quotation: true,
 };
 
 const getCompanies = async (req, res, next) => {
@@ -255,9 +256,8 @@ const getCompanyStaff = async (req, res, next) => {
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
     const data = await prisma.td_CompanyStaff.findMany({
-      where: {
-        companyId: company.id,
-      },
+      include: includeCompanyStaff,
+      where: { companyId: company.id },
     });
 
     res.status(200).json({ success: true, data });
