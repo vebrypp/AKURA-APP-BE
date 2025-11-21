@@ -119,7 +119,6 @@ const getQuotation = async (req, res, next) => {
 };
 
 const getQuotationItems = async (req, res, next) => {
-  console.log(req.query);
   const {
     limit = 10,
     page = 1,
