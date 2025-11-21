@@ -169,26 +169,26 @@ model th_ServiceScope {
 }
 
 model td_Quotation {
-  id              String          @id @default(uuid())
-  no              String          @db.VarChar(255)
-  date            DateTime        @db.Date
+  id              String                    @id @default(uuid())
+  no              String                    @db.VarChar(255)
+  date            DateTime                  @db.Date
   inquiryMethod   Int
-  inquiryDate     DateTime        @db.Date
-  subject         String          @db.VarChar(255)
-  termOfPayment   String          @db.VarChar(255)
-  validity        String          @db.VarChar(255)
+  inquiryDate     DateTime                  @db.Date
+  subject         String                    @db.VarChar(255)
+  termOfPayment   String                    @db.VarChar(255)
+  validity        String                    @db.VarChar(255)
   tax             Int
-  supplyAkura     String          @db.VarChar(255)
-  supplyCustomer  String          @db.VarChar(255)
-  location        String          @db.VarChar(255)
-  accomplished    String          @db.VarChar(255)
-  deliveryReports String          @db.VarChar(255)
-  staffId         String          @db.VarChar(255)
-  userId          String          @db.VarChar(255)
-  createAt        DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  staff           td_CompanyStaff @relation(fields: [staffId], references: [id])
-  user            td_User         @relation(fields: [userId], references: [id])
+  supplyAkura     String                    @db.VarChar(255)
+  supplyCustomer  String                    @db.VarChar(255)
+  location        String                    @db.VarChar(255)
+  accomplished    String                    @db.VarChar(255)
+  deliveryReports String                    @db.VarChar(255)
+  staffId         String                    @db.VarChar(255)
+  userId          String                    @db.VarChar(255)
+  createAt        DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  staff           td_CompanyStaff           @relation(fields: [staffId], references: [id])
+  user            td_User                   @relation(fields: [userId], references: [id])
   description     td_QuotationDescription[]
   history         th_Quotation[]
 }
@@ -205,11 +205,24 @@ model th_Quotation {
 
 
 model td_QuotationDescription {
-  id              String                @id @default(uuid())
-  descriptionId   String                @db.VarChar(255)
-  quotationId     String                @db.VarChar(255)
-  createAt        DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  quotation       td_Quotation          @relation(fields: [quotationId], references: [id])
-  description     td_ServiceDescription @relation(fields: [descriptionId], references: [id])
+  id              String                        @id @default(uuid())
+  descriptionId   String                        @db.VarChar(255)
+  quotationId     String                        @db.VarChar(255)
+  createAt        DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  quotation       td_Quotation                  @relation(fields: [quotationId], references: [id])
+  description     td_ServiceDescription         @relation(fields: [descriptionId], references: [id])
+  item            td_QuotationDescriptionItem[]
+}
+
+model td_QuotationDescriptionItem {
+  id                      String                  @id @default(uuid())
+  quotationDescriptionId  String                  @db.VarChar(255)
+  name                    String                  @db.VarChar(255)
+  quantity                Int
+  price                   Int
+  totalPrice              Int
+  createAt                DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  quotationDescription    td_QuotationDescription @relation(fields: [quotationDescriptionId], references: [id])
 }

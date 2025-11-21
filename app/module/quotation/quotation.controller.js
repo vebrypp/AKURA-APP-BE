@@ -11,13 +11,17 @@ const {
 } = require("../../utils/konstanta");
 const { formatDate } = require("../../utils/format");
 
-const include = {
+const includeQuotation = {
   staff: {
     include: {
       company: true,
     },
   },
   user: true,
+};
+
+const includeQuotationItem = {
+  quotationDescription: true,
 };
 
 const getQuotations = async (req, res, next) => {
@@ -39,7 +43,7 @@ const getQuotations = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       prisma.td_Quotation.findMany({
-        include,
+        include: includeQuotation,
         orderBy: sorter,
         skip,
         take,
@@ -73,14 +77,14 @@ const getQuotations = async (req, res, next) => {
   }
 };
 
-const getQuotataion = async (req, res, next) => {
+const getQuotation = async (req, res, next) => {
   const { id } = req.params;
 
   if (!id)
     return res.status(409).json({ success: false, message: MSG.INVALID_ID });
   try {
     const data = await prisma.td_Quotation.findUnique({
-      include,
+      include: includeQuotation,
       where: { id },
     });
 
@@ -111,6 +115,51 @@ const getQuotataion = async (req, res, next) => {
     res.status(200).json({ success: true, data: quotation });
   } catch (error) {
     next();
+  }
+};
+
+const getQuotationItems = async (req, res, next) => {
+  console.log(req.query);
+  const {
+    limit = 10,
+    page = 1,
+    order = "desc",
+    sort = "createAt",
+    ...filters
+  } = req.query;
+
+  try {
+    const where = filterHandler(filters);
+    const sorter = sortHandler(sort, order);
+
+    const currentPage = Number(page) || 1;
+    const take = parseInt(limit);
+    const skip = (currentPage - 1) * take;
+
+    const [data, total] = await Promise.all([
+      prisma.td_QuotationDescriptionItem.findMany({
+        include: includeQuotationItem,
+        orderBy: sorter,
+        skip,
+        take,
+        where,
+      }),
+
+      prisma.td_QuotationDescriptionItem.count({ where }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      pagination: {
+        total,
+        page: currentPage,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      },
+      data: data,
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -231,7 +280,8 @@ const deleteQuotation = async (req, res, next) => {
 
 module.exports = {
   getQuotations,
-  getQuotataion,
+  getQuotation,
+  getQuotationItems,
   postQuotation,
   deleteQuotation,
 };

@@ -3,6 +3,7 @@ const filterHandler = require("../../../utils/filterHandler");
 const sortHandler = require("../../../utils/sortHandler");
 const { getCompanyType } = require("./konstanta");
 const MSG = require("../../../utils/message");
+const relationCheck = require("./utils/relationCheck");
 
 const includeCompany = {
   staff: true,
@@ -270,44 +271,42 @@ const deleteCompany = async (req, res, next) => {
 
   try {
     const company = await prisma.td_Company.findFirst({
-      where: {
-        id,
-      },
+      where: { id },
       include: includeCompany,
     });
 
     if (!company)
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
-    const staffIds = company.staff.map((staff) => staff.id);
+    const hasRelation = await relationCheck(company.staff);
+
+    if (hasRelation)
+      return res.status(409).json({
+        success: true,
+        message: MSG.DELETE_DATA_USED,
+      });
+
+    const staffIds = company.staff.map((staff) => {
+      return staff.id;
+    });
 
     await prisma.$transaction(async (tx) => {
       if (staffIds.length > 0) {
         await tx.th_CompanyStaff.deleteMany({
-          where: {
-            companyStaffId: {
-              in: staffIds,
-            },
-          },
+          where: { companyStaffId: { in: staffIds } },
         });
 
         await tx.td_CompanyStaff.deleteMany({
-          where: {
-            companyId: company.id,
-          },
+          where: { companyId: company.id },
         });
       }
 
       await tx.th_Company.deleteMany({
-        where: {
-          companyId: company.id,
-        },
+        where: { companyId: company.id },
       });
 
       await tx.td_Company.delete({
-        where: {
-          id: company.id,
-        },
+        where: { id: company.id },
       });
     });
 
@@ -322,9 +321,7 @@ const deleteCompanyStaff = async (req, res, next) => {
 
   try {
     const staff = await prisma.td_CompanyStaff.findFirst({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!staff)
@@ -332,19 +329,22 @@ const deleteCompanyStaff = async (req, res, next) => {
         .status(200)
         .json({ success: false, message: MSG.NOT_FOUND("Staff") });
 
-    await prisma.$transaction([
-      prisma.th_CompanyStaff.deleteMany({
-        where: {
-          companyStaffId: id,
-        },
-      }),
+    const hasRelation = await relationCheck(staff);
 
-      prisma.td_CompanyStaff.delete({
-        where: {
-          id,
-        },
-      }),
-    ]);
+    if (hasRelation)
+      return res
+        .status(409)
+        .json({ success: true, message: MSG.DELETE_DATA_USED });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.th_CompanyStaff.deleteMany({
+        where: { companyStaffId: id },
+      });
+
+      await tx.td_CompanyStaff.delete({
+        where: { id },
+      });
+    });
 
     res.status(200).json({ success: true, message: MSG.DELETED("Staff") });
   } catch (error) {
