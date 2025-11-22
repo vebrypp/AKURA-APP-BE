@@ -170,8 +170,8 @@ model th_ServiceScope {
 
 model td_Quotation {
   id              String                    @id @default(uuid())
-  no              String                    @db.VarChar(255)
-  date            DateTime                  @db.Date
+  no              Int                       @default(autoincrement())
+  date            DateTime                  @default(now())
   inquiryMethod   Int
   inquiryDate     DateTime                  @db.Date
   subject         String                    @db.VarChar(255)
@@ -189,15 +189,16 @@ model td_Quotation {
   updatedAt       DateTime                  @updatedAt
   staff           td_CompanyStaff           @relation(fields: [staffId], references: [id])
   user            td_User                   @relation(fields: [userId], references: [id])
-  description     td_QuotationDescription[]
+  service         td_QuotationDescription[]
   history         th_Quotation[]
 }
 
 model th_Quotation {
   id              String          @id @default(uuid())
-  action          Int
-  name            String          @db.VarChar(255)
   quotationId     String          @db.VarChar(255)
+  action          Int
+  actionDetail    String          @db.VarChar(255)
+  user            String          @db.VarChar(255)
   createAt        DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   quotation       td_Quotation    @relation(fields: [quotationId], references: [id])

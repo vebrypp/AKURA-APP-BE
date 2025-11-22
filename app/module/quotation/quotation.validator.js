@@ -1,4 +1,5 @@
 const { body } = require("express-validator");
+const handleValidation = require("../../middleware/handleValidation");
 
 const validateServiceArray = body("services")
   .isArray({ min: 1 })
@@ -19,19 +20,19 @@ const validateServiceArray = body("services")
   });
 
 const validateQuotation = [
-  body("no")
-    .trim()
-    .notEmpty()
-    .withMessage("Document number cannot be empty.")
-    .bail(),
-  body("date")
-    .notEmpty()
-    .withMessage("Document date cannot be empty ")
-    .bail()
-    .isDate()
-    .withMessage("Invalid document date.")
-    .bail()
-    .toDate(),
+  // body("no")
+  //   .trim()
+  //   .notEmpty()
+  //   .withMessage("Document number cannot be empty.")
+  //   .bail(),
+  // body("date")
+  //   .notEmpty()
+  //   .withMessage("Document date cannot be empty ")
+  //   .bail()
+  //   .isDate()
+  //   .withMessage("Invalid document date.")
+  //   .bail()
+  //   .toDate(),
   body("staffId")
     .trim()
     .notEmpty()
@@ -102,8 +103,38 @@ const validateQuotation = [
     .withMessage("Delivery reports cannot be empty.")
     .bail(),
   validateServiceArray,
+
+  handleValidation,
+];
+
+const validateItem = [
+  body("descriptionItemId")
+    .trim()
+    .notEmpty()
+    .withMessage("Description item id cannot be empty.")
+    .bail(),
+  body("quotationDescriptionId")
+    .trim()
+    .notEmpty()
+    .withMessage("Quatation description id cannot be empty.")
+    .bail(),
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Name item id cannot be empty.")
+    .bail(),
+  body("quantity")
+    .notEmpty()
+    .withMessage("Quantity item id cannot be empty.")
+    .bail()
+    .isInt({ min: 0 })
+    .withMessage("Invalid quantity type.")
+    .bail(),
+
+  handleValidation,
 ];
 
 module.exports = {
   validateQuotation,
+  validateItem,
 };

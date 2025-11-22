@@ -3,7 +3,6 @@ const filterHandler = require("../../utils/filterHandler");
 const sortHandler = require("../../utils/sortHandler");
 
 const MSG = require("../../utils/message");
-const { validationResult } = require("express-validator");
 const {
   konstantaAction,
   getInquiryMethod,
@@ -11,17 +10,40 @@ const {
 } = require("../../utils/konstanta");
 const { formatDate } = require("../../utils/format");
 
-const includeQuotation = {
-  staff: {
-    include: {
-      company: true,
-    },
-  },
-  user: true,
+const actionDetail = {
+  quotation: "Quotation",
+  service: "Quotation - Service",
+  item: "Quotation - Item",
 };
 
-const includeQuotationItem = {
-  quotationDescription: true,
+const include = {
+  quotation: {
+    staff: {
+      include: {
+        company: true,
+      },
+    },
+    service: {
+      include: {
+        item: true,
+        description: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    },
+    user: true,
+  },
+  description: {
+    description: {
+      include: { service: true, items: true },
+    },
+    item: true,
+  },
+  item: {
+    quotationDescription: true,
+  },
 };
 
 const getQuotations = async (req, res, next) => {
@@ -43,7 +65,7 @@ const getQuotations = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       prisma.td_Quotation.findMany({
-        include: includeQuotation,
+        include: include.quotation,
         orderBy: sorter,
         skip,
         take,
@@ -84,7 +106,7 @@ const getQuotation = async (req, res, next) => {
     return res.status(409).json({ success: false, message: MSG.INVALID_ID });
   try {
     const data = await prisma.td_Quotation.findUnique({
-      include: includeQuotation,
+      include: include.quotation,
       where: { id },
     });
 
@@ -109,6 +131,7 @@ const getQuotation = async (req, res, next) => {
       location: data.location,
       accomplished: data.accomplished,
       deliveryReports: data.deliveryReports,
+      services: data.service,
       preparedBy: data.user.name,
     };
 
@@ -118,7 +141,7 @@ const getQuotation = async (req, res, next) => {
   }
 };
 
-const getQuotationItems = async (req, res, next) => {
+const getDescriptions = async (req, res, next) => {
   const {
     limit = 10,
     page = 1,
@@ -136,15 +159,15 @@ const getQuotationItems = async (req, res, next) => {
     const skip = (currentPage - 1) * take;
 
     const [data, total] = await Promise.all([
-      prisma.td_QuotationDescriptionItem.findMany({
-        include: includeQuotationItem,
+      prisma.td_QuotationDescription.findMany({
+        include: include.description,
         orderBy: sorter,
         skip,
         take,
         where,
       }),
 
-      prisma.td_QuotationDescriptionItem.count({ where }),
+      prisma.td_QuotationDescription.count({ where }),
     ]);
 
     res.status(200).json({
@@ -164,8 +187,6 @@ const getQuotationItems = async (req, res, next) => {
 
 const postQuotation = async (req, res, next) => {
   const {
-    no,
-    date,
     inquiryMethod,
     inquiryDate,
     subject,
@@ -182,19 +203,10 @@ const postQuotation = async (req, res, next) => {
   } = req.body;
   const user = req.user;
 
-  const errorValidation = validationResult(req);
-
-  if (!errorValidation.isEmpty())
-    return res
-      .status(400)
-      .json({ success: false, message: errorValidation.array()[0].msg });
-
   try {
     await prisma.$transaction(async (tx) => {
       const newQuotation = await tx.td_Quotation.create({
         data: {
-          no: no.toUpperCase(),
-          date,
           inquiryMethod,
           inquiryDate,
           subject: subject.toUpperCase(),
@@ -215,7 +227,8 @@ const postQuotation = async (req, res, next) => {
         data: {
           quotationId: newQuotation.id,
           action: konstantaAction.create,
-          name: user?.name,
+          actionDetail: actionDetail.quotation,
+          user: user?.name,
         },
       });
 
@@ -230,6 +243,41 @@ const postQuotation = async (req, res, next) => {
     });
 
     res.status(201).json({ success: true, message: MSG.CREATED });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
+const postQuotataionItem = async (req, res, next) => {
+  const { descriptionItemId, name, quantity, quotationDescriptionId } =
+    req.body;
+
+  try {
+    const descriptionItem = await prisma.td_ServiceDescriptionItem.findUnique({
+      where: {
+        id: descriptionItemId,
+      },
+    });
+
+    if (!descriptionItem)
+      return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.td_QuotationDescriptionItem.create({
+        data: {
+          quotationDescriptionId,
+          name,
+          quantity,
+          price: descriptionItem.basePrice,
+          totalPrice: descriptionItem.basePrice,
+        },
+      });
+    });
+
+    res
+      .status(201)
+      .json({ success: true, message: MSG.CREATED("Quotation item") });
   } catch (error) {
     next(error);
   }
@@ -280,7 +328,8 @@ const deleteQuotation = async (req, res, next) => {
 module.exports = {
   getQuotations,
   getQuotation,
-  getQuotationItems,
+  getDescriptions,
   postQuotation,
+  postQuotataionItem,
   deleteQuotation,
 };
