@@ -4,6 +4,7 @@ const sortHandler = require("../../../utils/sortHandler");
 const { getCompanyType } = require("./konstanta");
 const MSG = require("../../../utils/message");
 const relationCheck = require("./utils/relationCheck");
+const { getPriceType } = require("../../../utils/konstanta");
 
 const includeCompany = {
   staff: true,
@@ -43,6 +44,11 @@ const getCompanies = async (req, res, next) => {
       prisma.td_Company.count({ where }),
     ]);
 
+    const newData = data.map(({ priceType, ...rest }) => ({
+      ...rest,
+      priceType: getPriceType(priceType),
+    }));
+
     res.status(200).json({
       success: true,
       pagination: {
@@ -51,7 +57,7 @@ const getCompanies = async (req, res, next) => {
         limit: take,
         totalPages: Math.ceil(total / take),
       },
-      data,
+      data: newData,
     });
   } catch (error) {
     next(error);
@@ -85,7 +91,7 @@ const getCompany = async (req, res, next) => {
 };
 
 const postCompany = async (req, res, next) => {
-  const { company, type, address, staff } = req.body;
+  const { company, type, priceType, address, staff } = req.body;
   const user = req.user;
 
   try {
@@ -115,6 +121,7 @@ const postCompany = async (req, res, next) => {
       const newCompany = await tx.td_Company.create({
         data: {
           type,
+          priceType,
           company: company.toUpperCase(),
           address: address.toUpperCase(),
         },
@@ -155,6 +162,7 @@ const postCompany = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: MSG.CREATED("Company") });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };

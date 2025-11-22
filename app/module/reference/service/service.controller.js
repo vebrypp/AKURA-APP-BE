@@ -12,6 +12,8 @@ const includeDescription = {
   items: true,
   scope: true,
   service: true,
+  quotation: true,
+  history: true,
 };
 
 const getDescriptions = async (req, res, next) => {
@@ -303,17 +305,34 @@ const deleteService = async (req, res, next) => {
     return res.status(400).json({ success: false, message: MSG.INVALID_ID });
 
   try {
-    const service = await prisma.td_Service.findUnique({
+    const description = await prisma.td_ServiceDescription.findUnique({
       where: {
         id,
       },
-      include,
+      include: includeDescription,
     });
 
-    if (!service)
+    if (!description)
       return res.status(404).json({ success: false, message: MSG.NOT_FOUND });
 
-    await prisma.$transaction(async (tx) => {});
+    const countScope = description.scope.length;
+    const countItems = description.items.length;
+    const countQuotation = description.quotation.length;
+
+    if (countScope > 0 || countItems > 0 || countQuotation > 0)
+      return res
+        .status(409)
+        .json({ success: false, message: MSG.DELETE_DATA_USED });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.th_ServiceDescription.deleteMany({
+        where: { descriptionId: description.id },
+      });
+
+      await tx.td_ServiceDescription.delete({
+        where: { id: description.id },
+      });
+    });
 
     res.status(200).json({ success: true, message: MSG.DELETED("Service") });
   } catch (error) {

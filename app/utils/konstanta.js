@@ -48,9 +48,22 @@ const getTitleCustomer = (val) => {
   }
 };
 
+const getPriceType = (val) => {
+  switch (val) {
+    case 1:
+      return "BASE PRICE";
+    case 2:
+      return "SPECIAL PRICE";
+
+    default:
+      return null;
+  }
+};
+
 module.exports = {
   konstantaAction,
   getMeasurementUnit,
   getInquiryMethod,
   getTitleCustomer,
+  getPriceType,
 };

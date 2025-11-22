@@ -30,11 +30,22 @@ const validateStaffArray = body("staff")
 
 const validateCompany = [
   body("type")
+    .trim()
     .notEmpty()
     .withMessage("Type cannot be empty")
     .bail()
-    .isInt()
+    .isInt({ min: 1 })
     .withMessage("Type must be an integer")
+    .bail()
+    .toInt(),
+  body("priceType")
+    .trim()
+    .notEmpty()
+    .withMessage("Price type cannot be empty")
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage("Price type must be an integer")
+    .bail()
     .toInt(),
   body("company")
     .trim()

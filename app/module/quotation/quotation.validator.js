@@ -20,19 +20,6 @@ const validateServiceArray = body("services")
   });
 
 const validateQuotation = [
-  // body("no")
-  //   .trim()
-  //   .notEmpty()
-  //   .withMessage("Document number cannot be empty.")
-  //   .bail(),
-  // body("date")
-  //   .notEmpty()
-  //   .withMessage("Document date cannot be empty ")
-  //   .bail()
-  //   .isDate()
-  //   .withMessage("Invalid document date.")
-  //   .bail()
-  //   .toDate(),
   body("staffId")
     .trim()
     .notEmpty()
@@ -116,20 +103,25 @@ const validateItem = [
   body("quotationDescriptionId")
     .trim()
     .notEmpty()
-    .withMessage("Quatation description id cannot be empty.")
+    .withMessage("Quotation description cannot be empty.")
     .bail(),
-  body("name")
-    .trim()
-    .notEmpty()
-    .withMessage("Name item id cannot be empty.")
-    .bail(),
+  body("name").trim().notEmpty().withMessage("Name cannot be empty.").bail(),
   body("quantity")
+    .trim()
     .notEmpty()
     .withMessage("Quantity item id cannot be empty.")
     .bail()
     .isInt({ min: 0 })
     .withMessage("Invalid quantity type.")
-    .bail(),
+    .bail()
+    .toInt(),
+  body("discount")
+    .optional()
+    .trim()
+    .isInt({ min: 0 })
+    .withMessage("Invalid discount type.")
+    .bail()
+    .toInt(),
 
   handleValidation,
 ];

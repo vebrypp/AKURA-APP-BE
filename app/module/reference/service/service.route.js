@@ -26,8 +26,8 @@ route.get("/option", verifyToken, getServiceOption);
 route.post("/", verifyToken, validateService, postService);
 route.post("/scope", verifyToken, validateScope, postScope);
 route.post("/description/item", validateItem, verifyToken, postItem);
-route.delete("/:id", verifyToken, deleteService);
 route.delete("/scope/:id", verifyToken, deleteScope);
 route.delete("/description/item/:id", verifyToken, deleteItem);
+route.delete("/:id", verifyToken, deleteService);
 
 module.exports = route;

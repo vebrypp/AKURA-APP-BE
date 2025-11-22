@@ -42,6 +42,7 @@ model td_RefreshToken {
 model td_Company {
   id              String            @id @default(uuid())
   type            Int
+  priceType       Int
   company         String            @db.VarChar(255)
   address         String            @db.Text
   createAt        DateTime          @default(now())
@@ -222,6 +223,7 @@ model td_QuotationDescriptionItem {
   name                    String                  @db.VarChar(255)
   quantity                Int
   price                   Int
+  discount                Int?
   totalPrice              Int
   createAt                DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
